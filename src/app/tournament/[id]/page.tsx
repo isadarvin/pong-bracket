@@ -90,6 +90,8 @@ export default function TournamentPage() {
       setStoredReporterId(parsed);
       setReporterInput(String(parsed));
     }
+    // loadTournament intentionally not in deps to avoid re-fetch loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -99,8 +101,6 @@ export default function TournamentPage() {
         setCandidatePlayerId(found.id);
       }
     }
-    // storedReporterId and data intentional; loadTournament handled elsewhere
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storedReporterId, data]);
 
   const playerLookup = useMemo(() => {

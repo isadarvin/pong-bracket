@@ -4,10 +4,9 @@ import cn from "classnames";
 type CardProps = {
   children: ReactNode;
   className?: string;
-  tone?: "default" | "accent";
 };
 
-export function Card({ children, className, tone = "default" }: CardProps) {
+export function Card({ children, className }: CardProps) {
   return (
     <div
       className={cn(
