@@ -145,7 +145,7 @@ export default function AdminPage() {
         </header>
 
         {!authorized ? (
-          <Card className="p-6 space-y-4" tone="accent">
+          <Card className="p-6 space-y-4">
             <p className="text-sm text-[var(--ink-soft)]">
               Enter the admin password to create or start tournaments.
             </p>
@@ -162,7 +162,7 @@ export default function AdminPage() {
             {message && <p className="text-sm text-[var(--danger)]">{message}</p>}
           </Card>
         ) : (
-          <Card className="p-6 space-y-4" tone="accent">
+          <Card className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-[var(--ink-soft)]">Admin access unlocked</p>
               <button

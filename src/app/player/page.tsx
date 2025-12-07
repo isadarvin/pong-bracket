@@ -106,7 +106,7 @@ export default function PlayerEntry() {
           <p className="text-[var(--ink-soft)]">Bring the password you received from the organizer.</p>
         </header>
 
-        <Card className="p-6 space-y-4" tone="accent">
+        <Card className="p-6 space-y-4">
           {step === "password" && (
             <div className="grid gap-4">
               <div className="grid gap-3">

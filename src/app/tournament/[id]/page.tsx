@@ -286,7 +286,7 @@ export default function TournamentPage() {
         </header>
 
         {needsPassword && (
-          <Card className="p-5 space-y-3" tone="accent">
+          <Card className="p-5 space-y-3">
             <p className="text-sm text-[var(--ink-soft)]">
               Enter the tournament password to view the bracket and report scores.
             </p>
