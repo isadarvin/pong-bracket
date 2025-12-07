@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdminToken, hashTournamentPassword } from "@/lib/auth";
@@ -10,7 +10,7 @@ const createSchema = z.object({
   tournamentPassword: z.string().min(4),
 });
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") as TournamentStatus | null;
 
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ tournaments });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = createSchema.parse(body);

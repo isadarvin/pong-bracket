@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyTournamentPassword } from "@/lib/auth";
@@ -18,9 +18,10 @@ async function requirePasswordIfNeeded(tournamentId: number, password?: string |
   }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const tournamentId = Number(params.id);
+    const { id } = await params;
+    const tournamentId = Number(id);
     const password = request.headers.get("x-tournament-password");
     const url = new URL(request.url);
     const passwordParam = url.searchParams.get("password");

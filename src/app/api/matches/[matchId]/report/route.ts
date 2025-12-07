@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyTournamentPassword } from "@/lib/auth";
 import { reportMatch } from "@/lib/tournament/matchProgression";
@@ -12,9 +12,9 @@ const reportSchema = z.object({
   player2Score: z.number().int().nullable().optional(),
 });
 
-export async function POST(request: Request, { params }: { params: { matchId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ matchId: string }> }) {
   try {
-    const matchId = params.matchId;
+    const { matchId } = await params;
     const body = await request.json();
     const data = reportSchema.parse(body);
 

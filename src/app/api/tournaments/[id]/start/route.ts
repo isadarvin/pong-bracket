@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdminToken } from "@/lib/auth";
 import { initializeEightPlayerBracket } from "@/lib/tournament/bracketInitializer";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const tournamentId = Number(params.id);
+    const { id } = await params;
+    const tournamentId = Number(id);
     const adminToken = request.headers.get("x-admin-token");
     requireAdminToken(adminToken);
 

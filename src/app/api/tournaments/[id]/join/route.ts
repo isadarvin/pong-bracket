@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyTournamentPassword } from "@/lib/auth";
@@ -10,11 +10,12 @@ const joinSchema = z.object({
   tournamentPassword: z.string(),
 });
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json();
     const data = joinSchema.parse(body);
-    const tournamentId = Number(params.id);
+    const { id } = await params;
+    const tournamentId = Number(id);
 
     const tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
