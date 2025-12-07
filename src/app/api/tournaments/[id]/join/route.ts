@@ -61,7 +61,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         skill: p.skillRating,
       })),
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

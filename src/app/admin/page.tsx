@@ -75,8 +75,9 @@ export default function AdminPage() {
       setMessage("Tournament created");
       setForm((prev) => ({ ...prev, name: "" }));
       await loadTournaments();
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to create tournament";
+      setMessage(message);
     } finally {
       setLoading(false);
     }
@@ -96,8 +97,9 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.error || "Unable to start tournament");
       setMessage("Tournament started");
       await loadTournaments();
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to start tournament";
+      setMessage(message);
     } finally {
       setLoading(false);
     }

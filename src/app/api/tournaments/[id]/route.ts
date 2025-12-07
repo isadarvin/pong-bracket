@@ -65,7 +65,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       players,
       matches: tournament.matches,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: error.status || 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    // @ts-expect-error optional status from custom errors
+    const status = (error as { status?: number }).status || 400;
+    return NextResponse.json({ error: message }, { status });
   }
 }

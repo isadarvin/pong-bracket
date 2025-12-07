@@ -62,8 +62,9 @@ export default function PlayerEntry() {
       });
       sessionStorage.setItem(`tournament-${selectedId}-password`, password);
       setStep("join");
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to verify tournament";
+      setMessage(message);
     }
   };
 
@@ -89,8 +90,9 @@ export default function PlayerEntry() {
       sessionStorage.setItem(`tournament-${selectedId}-playerId`, String(data.tournamentPlayerId));
       setName("");
       setSkill(3);
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to join";
+      setMessage(message);
     }
   };
 

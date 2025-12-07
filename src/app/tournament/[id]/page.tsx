@@ -69,8 +69,9 @@ export default function TournamentPage() {
       if (!res.ok) throw new Error(json.error || "Unable to load tournament");
       setData(json);
       sessionStorage.setItem(`tournament-${id}-password`, pass);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to load tournament";
+      setError(message);
       setData(null);
     } finally {
       setLoading(false);
@@ -98,6 +99,8 @@ export default function TournamentPage() {
         setCandidatePlayerId(found.id);
       }
     }
+    // storedReporterId and data intentional; loadTournament handled elsewhere
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storedReporterId, data]);
 
   const playerLookup = useMemo(() => {
@@ -149,8 +152,9 @@ export default function TournamentPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Unable to submit result");
       await loadTournament(password);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to submit result";
+      setError(message);
     }
   };
 
