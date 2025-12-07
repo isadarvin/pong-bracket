@@ -282,7 +282,7 @@ export default function TournamentPage() {
         <header className="flex flex-col gap-2">
           <p className="uppercase text-xs tracking-[0.3em] text-[var(--ink-soft)]">Bracket</p>
           <h1 className="text-4xl font-semibold">{data?.tournament.name ?? "Tournament"}</h1>
-          {data?.tournament.status && <StatusPill status={data.tournament.status as any} />}
+          {data?.tournament.status && <StatusPill status={data.tournament.status as typeof data.tournament.status} />}
         </header>
 
         {needsPassword && (
