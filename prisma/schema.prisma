@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TournamentStatus {
+  joining
+  in_progress
+  completed
+}
+
+enum MatchStatus {
+  pending
+  completed
+}
+
+enum BracketType {
+  winners
+  losers
+  final
+}
+
+model Tournament {
+  id                     Int              @id @default(autoincrement())
+  name                   String
+  createdAt              DateTime         @default(now())
+  joinDeadline           DateTime
+  status                 TournamentStatus
+  tournamentPasswordHash String
+
+  winnerPlayerId String?
+  winner         GlobalPlayer? @relation("TournamentWinner", fields: [winnerPlayerId], references: [playerId])
+
+  players TournamentPlayer[]
+  matches Match[]
+}
+
+model GlobalPlayer {
+  playerId String @id @default(uuid())
+  name     String
+
+  tournaments    TournamentPlayer[]
+  tournamentsWon Tournament[] @relation("TournamentWinner")
+}
+
+model TournamentPlayer {
+  id               Int       @id @default(autoincrement())
+  tournamentId     Int
+  playerId         String
+  skillRating      Int
+  seed             Int?
+  finalRank        Int?
+  lossCount        Int       @default(0)
+  eliminationOrder Int?
+  winsCount        Int       @default(0)
+
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  globalPlayer GlobalPlayer @relation(fields: [playerId], references: [playerId])
+
+  matchesAsPlayer1 Match[] @relation("MatchPlayer1")
+  matchesAsPlayer2 Match[] @relation("MatchPlayer2")
+  matchesWon       Match[] @relation("MatchWinner")
+}
+
+model Match {
+  id           String       @id @default(uuid())
+  tournamentId Int
+  bracket      BracketType
+  round        Int
+  matchIndex   Int
+
+  player1Id Int?
+  player2Id Int?
+  winnerId  Int?
+  status    MatchStatus     @default(pending)
+
+  nextWinnerMatchId String?
+  nextLoserMatchId  String?
+
+  player1Score Int?
+  player2Score Int?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+
+  player1 TournamentPlayer? @relation("MatchPlayer1", fields: [player1Id], references: [id])
+  player2 TournamentPlayer? @relation("MatchPlayer2", fields: [player2Id], references: [id])
+  winner  TournamentPlayer? @relation("MatchWinner", fields: [winnerId], references: [id])
+
+  nextWinnerMatch   Match?  @relation("NextWinner", fields: [nextWinnerMatchId], references: [id])
+  previousWinnerFor Match[] @relation("NextWinner")
+
+  nextLoserMatch    Match?  @relation("NextLoser", fields: [nextLoserMatchId], references: [id])
+  previousLoserFor  Match[] @relation("NextLoser")
+}
