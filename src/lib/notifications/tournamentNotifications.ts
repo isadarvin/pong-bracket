@@ -28,37 +28,45 @@ export async function notifyTournamentStart(tournamentId: number): Promise<void>
       const player1 = match.player1.globalPlayer;
       const player2 = match.player2.globalPlayer;
 
-      // Notify player 1
-      notifications.push(
-        sendSMS(
-          player1.phoneNumber,
-          `${tournament.name} is starting! Your first match: You vs ${player2.name}`
-        ).then(() => {})
-      );
+      // Notify player 1 (only if they have a phone number)
+      if (player1.phoneNumber) {
+        notifications.push(
+          sendSMS(
+            player1.phoneNumber,
+            `${tournament.name} is starting! Your first match: You vs ${player2.name}`
+          ).then(() => {})
+        );
+      }
 
-      // Notify player 2
-      notifications.push(
-        sendSMS(
-          player2.phoneNumber,
-          `${tournament.name} is starting! Your first match: You vs ${player1.name}`
-        ).then(() => {})
-      );
+      // Notify player 2 (only if they have a phone number)
+      if (player2.phoneNumber) {
+        notifications.push(
+          sendSMS(
+            player2.phoneNumber,
+            `${tournament.name} is starting! Your first match: You vs ${player1.name}`
+          ).then(() => {})
+        );
+      }
     } else if (match.player1?.globalPlayer && !match.player2) {
       // Player 1 has a bye
-      notifications.push(
-        sendSMS(
-          match.player1.globalPlayer.phoneNumber,
-          `${tournament.name} is starting! You have a bye in round 1.`
-        ).then(() => {})
-      );
+      if (match.player1.globalPlayer.phoneNumber) {
+        notifications.push(
+          sendSMS(
+            match.player1.globalPlayer.phoneNumber,
+            `${tournament.name} is starting! You have a bye in round 1.`
+          ).then(() => {})
+        );
+      }
     } else if (match.player2?.globalPlayer && !match.player1) {
       // Player 2 has a bye
-      notifications.push(
-        sendSMS(
-          match.player2.globalPlayer.phoneNumber,
-          `${tournament.name} is starting! You have a bye in round 1.`
-        ).then(() => {})
-      );
+      if (match.player2.globalPlayer.phoneNumber) {
+        notifications.push(
+          sendSMS(
+            match.player2.globalPlayer.phoneNumber,
+            `${tournament.name} is starting! You have a bye in round 1.`
+          ).then(() => {})
+        );
+      }
     }
   }
 
@@ -85,16 +93,25 @@ export async function notifyNewMatch(matchId: string): Promise<void> {
   const player2 = match.player2.globalPlayer;
   const bracketName = match.bracket === "winners" ? "Winners" : match.bracket === "losers" ? "Losers" : "Final";
 
-  const notifications = [
-    sendSMS(
-      player1.phoneNumber,
-      `${match.tournament.name}: Your next match is ready! You vs ${player2.name} (${bracketName} Bracket, Round ${match.round})`
-    ),
-    sendSMS(
-      player2.phoneNumber,
-      `${match.tournament.name}: Your next match is ready! You vs ${player1.name} (${bracketName} Bracket, Round ${match.round})`
-    ),
-  ];
+  const notifications: Promise<unknown>[] = [];
+
+  if (player1.phoneNumber) {
+    notifications.push(
+      sendSMS(
+        player1.phoneNumber,
+        `${match.tournament.name}: Your next match is ready! You vs ${player2.name} (${bracketName} Bracket, Round ${match.round})`
+      )
+    );
+  }
+
+  if (player2.phoneNumber) {
+    notifications.push(
+      sendSMS(
+        player2.phoneNumber,
+        `${match.tournament.name}: Your next match is ready! You vs ${player1.name} (${bracketName} Bracket, Round ${match.round})`
+      )
+    );
+  }
 
   // Fire and forget
   Promise.allSettled(notifications).catch(console.error);
@@ -120,6 +137,9 @@ export async function notifyTournamentComplete(tournamentId: number): Promise<vo
   const notifications: Promise<void>[] = [];
 
   for (const player of tournament.players) {
+    // Skip players without phone numbers
+    if (!player.globalPlayer.phoneNumber) continue;
+
     const rank = player.finalRank || "N/A";
     const message =
       player.playerId === tournament.winnerPlayerId
