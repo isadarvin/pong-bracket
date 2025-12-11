@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { verifyTournamentPassword } from "@/lib/auth";
+import { verifyTournamentPassword, requireAdminToken } from "@/lib/auth";
 
 async function requirePasswordIfNeeded(tournamentId: number, password?: string | null) {
   const tournament = await prisma.tournament.findUnique({
@@ -66,6 +66,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       players,
       matches: tournament.matches,
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    const status = (error as { status?: number }).status || 400;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const tournamentId = Number(id);
+    const adminToken = request.headers.get("x-admin-token");
+    requireAdminToken(adminToken);
+
+    // Delete in order: matches -> tournament players -> tournament
+    await prisma.match.deleteMany({
+      where: { tournamentId },
+    });
+
+    await prisma.tournamentPlayer.deleteMany({
+      where: { tournamentId },
+    });
+
+    await prisma.tournament.delete({
+      where: { id: tournamentId },
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     const status = (error as { status?: number }).status || 400;
