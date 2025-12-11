@@ -175,18 +175,20 @@ export default function AdminPage() {
 
   const loadPlayers = async (tournament: Tournament) => {
     setLoadingPlayers(true);
+    setPlayersModal({ tournament, players: [] });
     try {
-      const storedPassword = sessionStorage.getItem(`tournament-${tournament.id}-password`);
-      const res = await fetch(`/api/tournaments/${tournament.id}?password=${storedPassword || ""}`);
+      const res = await fetch(`/api/tournaments/${tournament.id}`, {
+        headers: {
+          "x-admin-token": adminToken,
+        },
+      });
       if (!res.ok) {
-        // If we don't have the tournament password, just show empty list with a message
-        setPlayersModal({ tournament, players: [] });
         return;
       }
       const data = await res.json();
       setPlayersModal({ tournament, players: data.players || [] });
     } catch {
-      setPlayersModal({ tournament, players: [] });
+      // Keep showing empty list on error
     } finally {
       setLoadingPlayers(false);
     }

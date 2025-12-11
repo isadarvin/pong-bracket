@@ -3,7 +3,15 @@ import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyTournamentPassword, requireAdminToken } from "@/lib/auth";
 
-async function requirePasswordIfNeeded(tournamentId: number, password?: string | null) {
+function isValidAdminToken(token?: string | null): boolean {
+  const adminSecret = process.env.ADMIN_PASSWORD;
+  return !!(adminSecret && token && token === adminSecret);
+}
+
+async function requirePasswordIfNeeded(tournamentId: number, password?: string | null, adminToken?: string | null) {
+  // Admin token bypasses tournament password requirement
+  if (isValidAdminToken(adminToken)) return;
+
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
     select: { status: true, tournamentPasswordHash: true },
@@ -23,10 +31,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const tournamentId = Number(id);
     const password = request.headers.get("x-tournament-password");
+    const adminToken = request.headers.get("x-admin-token");
     const url = new URL(request.url);
     const passwordParam = url.searchParams.get("password");
 
-    await requirePasswordIfNeeded(tournamentId, password || passwordParam);
+    await requirePasswordIfNeeded(tournamentId, password || passwordParam, adminToken);
 
     const tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
