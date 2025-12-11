@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { phoneNumber, code } = verifyCodeSchema.parse(body);
 
-    const player = await prisma.globalPlayer.findUnique({
+    const player = await prisma.globalPlayer.findFirst({
       where: { phoneNumber },
     });
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Mark as verified and clear the code
     await prisma.globalPlayer.update({
-      where: { phoneNumber },
+      where: { playerId: player.playerId },
       data: {
         verified: true,
         verificationCode: null,

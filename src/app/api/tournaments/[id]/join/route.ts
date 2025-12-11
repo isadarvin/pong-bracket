@@ -31,7 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Find the verified player by phone number
-    const globalPlayer = await prisma.globalPlayer.findUnique({
+    const globalPlayer = await prisma.globalPlayer.findFirst({
       where: { phoneNumber: data.phoneNumber },
     });
 

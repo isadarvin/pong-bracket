@@ -16,23 +16,32 @@ export async function POST(request: NextRequest) {
     const code = generateVerificationCode();
     const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Upsert the player - create if new, update verification code if exists
-    await prisma.globalPlayer.upsert({
+    // Find existing player by phone number, or create new one
+    const existingPlayer = await prisma.globalPlayer.findFirst({
       where: { phoneNumber },
-      update: {
-        name,
-        verificationCode: code,
-        verificationExpiry: expiry,
-        verified: false,
-      },
-      create: {
-        phoneNumber,
-        name,
-        verificationCode: code,
-        verificationExpiry: expiry,
-        verified: false,
-      },
     });
+
+    if (existingPlayer) {
+      await prisma.globalPlayer.update({
+        where: { playerId: existingPlayer.playerId },
+        data: {
+          name,
+          verificationCode: code,
+          verificationExpiry: expiry,
+          verified: false,
+        },
+      });
+    } else {
+      await prisma.globalPlayer.create({
+        data: {
+          phoneNumber,
+          name,
+          verificationCode: code,
+          verificationExpiry: expiry,
+          verified: false,
+        },
+      });
+    }
 
     const result = await sendSMS(
       phoneNumber,
