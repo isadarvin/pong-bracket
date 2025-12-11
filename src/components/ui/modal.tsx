@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import cn from "classnames";
 
@@ -12,6 +12,12 @@ type ModalProps = {
 };
 
 export function Modal({ open, onClose, children, className }: ModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -33,7 +39,7 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   return createPortal(
     <div
