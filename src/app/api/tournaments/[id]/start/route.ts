@@ -3,6 +3,7 @@ import { TournamentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdminToken } from "@/lib/auth";
 import { initializeEightPlayerBracket } from "@/lib/tournament/bracketInitializer";
+import { notifyTournamentStart } from "@/lib/notifications/tournamentNotifications";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -34,6 +35,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       where: { id: tournamentId },
       data: { status: TournamentStatus.in_progress },
     });
+
+    // Send SMS notifications to all players about their first matches
+    notifyTournamentStart(tournamentId).catch(console.error);
 
     return NextResponse.json({
       status: TournamentStatus.in_progress,

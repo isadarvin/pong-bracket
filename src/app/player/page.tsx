@@ -20,13 +20,16 @@ export default function PlayerEntry() {
   const [tournaments, setTournaments] = useState<TournamentListItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [password, setPassword] = useState<string>("");
-  const [step, setStep] = useState<"password" | "join">("password");
+  const [step, setStep] = useState<"password" | "phone" | "verify" | "join">("password");
   const [message, setMessage] = useState<string | null>(null);
   const [tournament, setTournament] = useState<TournamentInfo | null>(null);
   const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [skill, setSkill] = useState(3);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [joinedPlayerName, setJoinedPlayerName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadTournaments();
@@ -36,6 +39,8 @@ export default function PlayerEntry() {
     if (selectedId) {
       const stored = sessionStorage.getItem(`tournament-${selectedId}-password`);
       if (stored) setPassword(stored);
+      const storedPhone = sessionStorage.getItem("verified-phone");
+      if (storedPhone) setPhoneNumber(storedPhone);
     }
   }, [selectedId]);
 
@@ -64,10 +69,61 @@ export default function PlayerEntry() {
         status: data.tournament.status,
       });
       sessionStorage.setItem(`tournament-${selectedId}-password`, password);
-      setStep("join");
+
+      // Check if we already have a verified phone
+      const storedPhone = sessionStorage.getItem("verified-phone");
+      if (storedPhone) {
+        setPhoneNumber(storedPhone);
+        setStep("join");
+      } else {
+        setStep("phone");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to verify tournament";
       setMessage(message);
+    }
+  };
+
+  const sendVerificationCode = async () => {
+    setMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unable to send code");
+      setStep("verify");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to send verification code";
+      setMessage(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    setMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, code: verificationCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unable to verify code");
+
+      // Store verified phone for future use
+      sessionStorage.setItem("verified-phone", phoneNumber);
+      setStep("join");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to verify code";
+      setMessage(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -77,12 +133,13 @@ export default function PlayerEntry() {
       setMessage("Select a tournament");
       return;
     }
+    setIsLoading(true);
     try {
       const res = await fetch(`/api/tournaments/${selectedId}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
+          phoneNumber,
           skill,
           tournamentPassword: password,
         }),
@@ -92,11 +149,12 @@ export default function PlayerEntry() {
       sessionStorage.setItem(`tournament-${selectedId}-playerId`, String(data.tournamentPlayerId));
       setJoinedPlayerName(name);
       setShowSuccessModal(true);
-      setName("");
       setSkill(3);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to join";
       setMessage(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -152,6 +210,63 @@ export default function PlayerEntry() {
             </div>
           )}
 
+          {step === "phone" && (
+            <div className="grid gap-4">
+              <p className="text-sm text-[var(--ink-soft)]">
+                Selected: <strong>{tournament?.name}</strong>
+              </p>
+              <p className="text-sm text-[var(--ink-soft)]">
+                Enter your name and phone number to verify your identity.
+              </p>
+              <Input
+                label="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="You"
+              />
+              <Input
+                label="Phone number"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+1234567890"
+              />
+              <Button onClick={sendVerificationCode} disabled={isLoading || !name || !phoneNumber}>
+                {isLoading ? "Sending..." : "Send verification code"}
+              </Button>
+              <Button variant="ghost" onClick={() => setStep("password")}>
+                Back
+              </Button>
+            </div>
+          )}
+
+          {step === "verify" && (
+            <div className="grid gap-4">
+              <p className="text-sm text-[var(--ink-soft)]">
+                Selected: <strong>{tournament?.name}</strong>
+              </p>
+              <p className="text-sm text-[var(--ink-soft)]">
+                Enter the 6-digit code sent to {phoneNumber}
+              </p>
+              <Input
+                label="Verification code"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                placeholder="123456"
+                maxLength={6}
+              />
+              <Button onClick={verifyCode} disabled={isLoading || verificationCode.length !== 6}>
+                {isLoading ? "Verifying..." : "Verify"}
+              </Button>
+              <Button variant="ghost" onClick={sendVerificationCode} disabled={isLoading}>
+                Resend code
+              </Button>
+              <Button variant="ghost" onClick={() => setStep("phone")}>
+                Change phone number
+              </Button>
+            </div>
+          )}
+
           {step === "join" && (
             <div className="grid gap-4">
               <p className="text-sm text-[var(--ink-soft)]">
@@ -159,14 +274,11 @@ export default function PlayerEntry() {
               </p>
               {tournament?.status === "joining" ? (
                 <>
-                  <Input
-                    label="Your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="You"
-                  />
+                  <p className="text-sm text-[var(--ink-soft)]">
+                    Verified as: <strong>{name || "Player"}</strong> ({phoneNumber})
+                  </p>
                   <label className="flex flex-col gap-2 text-sm text-[var(--ink-soft)]">
-                    <span className="font-semibold text-[var(--ink)]">Skill (1–5)</span>
+                    <span className="font-semibold text-[var(--ink)]">Skill (1-5)</span>
                     <input
                       type="range"
                       min={1}
@@ -176,7 +288,18 @@ export default function PlayerEntry() {
                     />
                     <span className="text-xs text-[var(--ink-soft)]">Self-rated: {skill}</span>
                   </label>
-                  <Button onClick={handleJoin}>Join tournament</Button>
+                  <Button onClick={handleJoin} disabled={isLoading}>
+                    {isLoading ? "Joining..." : "Join tournament"}
+                  </Button>
+                  <Button variant="ghost" onClick={() => {
+                    sessionStorage.removeItem("verified-phone");
+                    setPhoneNumber("");
+                    setName("");
+                    setVerificationCode("");
+                    setStep("phone");
+                  }}>
+                    Use different phone
+                  </Button>
                 </>
               ) : (
                 <div className="space-y-3">
@@ -213,7 +336,7 @@ export default function PlayerEntry() {
             <p className="font-semibold text-sm">What&apos;s next?</p>
             <ul className="text-sm text-[var(--ink-soft)] space-y-1">
               <li>1. Wait for the organizer to start the tournament</li>
-              <li>2. Once started, come back to view the bracket</li>
+              <li>2. You&apos;ll receive an SMS when the tournament starts</li>
               <li>3. Play your matches and report scores</li>
             </ul>
           </div>
