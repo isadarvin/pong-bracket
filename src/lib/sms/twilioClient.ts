@@ -5,10 +5,13 @@ function getTwilioConfig() {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
-  if (!accountSid || !authToken || !fromNumber) {
-    throw new Error(
-      "Missing Twilio configuration. Required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER"
-    );
+  const missing: string[] = [];
+  if (!accountSid) missing.push("TWILIO_ACCOUNT_SID");
+  if (!authToken) missing.push("TWILIO_AUTH_TOKEN");
+  if (!fromNumber) missing.push("TWILIO_PHONE_NUMBER");
+
+  if (missing.length > 0) {
+    throw new Error(`Missing Twilio env vars: ${missing.join(", ")}`);
   }
 
   return { accountSid, authToken, fromNumber };
