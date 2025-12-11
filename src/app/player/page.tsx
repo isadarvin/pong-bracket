@@ -6,6 +6,7 @@ import { ThemeSetter } from "@/components/theme/ThemeSetter";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 type TournamentInfo = { id: number; name: string; status: "joining" | "in_progress" | "completed" };
 type TournamentListItem = {
@@ -24,6 +25,8 @@ export default function PlayerEntry() {
   const [tournament, setTournament] = useState<TournamentInfo | null>(null);
   const [name, setName] = useState("");
   const [skill, setSkill] = useState(3);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [joinedPlayerName, setJoinedPlayerName] = useState("");
 
   useEffect(() => {
     loadTournaments();
@@ -86,8 +89,9 @@ export default function PlayerEntry() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Unable to join");
-      setMessage(`Joined as ${name}. Your player id: ${data.tournamentPlayerId}`);
       sessionStorage.setItem(`tournament-${selectedId}-playerId`, String(data.tournamentPlayerId));
+      setJoinedPlayerName(name);
+      setShowSuccessModal(true);
       setName("");
       setSkill(3);
     } catch (err) {
@@ -193,6 +197,36 @@ export default function PlayerEntry() {
           {message && <p className="text-sm text-[var(--ink-soft)]">{message}</p>}
         </Card>
       </div>
+
+      <Modal open={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
+        <div className="space-y-4 text-center">
+          <div className="w-12 h-12 mx-auto rounded-full bg-[var(--accent-soft)] flex items-center justify-center">
+            <svg className="w-6 h-6 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold">You&apos;re in!</h2>
+          <p className="text-[var(--ink-soft)]">
+            <strong>{joinedPlayerName}</strong> has been registered for <strong>{tournament?.name}</strong>.
+          </p>
+          <div className="bg-[var(--bg)] rounded-lg p-4 text-left space-y-2">
+            <p className="font-semibold text-sm">What&apos;s next?</p>
+            <ul className="text-sm text-[var(--ink-soft)] space-y-1">
+              <li>1. Wait for the organizer to start the tournament</li>
+              <li>2. Once started, come back to view the bracket</li>
+              <li>3. Play your matches and report scores</li>
+            </ul>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => router.push(`/tournament/${selectedId}`)}>
+              View bracket
+            </Button>
+            <Button variant="ghost" onClick={() => setShowSuccessModal(false)}>
+              Register another player
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
