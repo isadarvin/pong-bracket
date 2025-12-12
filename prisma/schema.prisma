@@ -40,8 +40,12 @@ model Tournament {
 }
 
 model GlobalPlayer {
-  playerId String @id @default(uuid())
-  name     String
+  playerId           String    @id @default(uuid())
+  name               String
+  phoneNumber        String?   @unique
+  verified           Boolean   @default(false)
+  verificationCode   String?
+  verificationExpiry DateTime?
 
   tournaments    TournamentPlayer[]
   tournamentsWon Tournament[] @relation("TournamentWinner")

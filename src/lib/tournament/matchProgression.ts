@@ -1,5 +1,6 @@
 import { MatchStatus, Prisma, TournamentStatus } from "@prisma/client";
 import { prisma } from "../prisma";
+import { notifyNewMatch, notifyTournamentComplete } from "../notifications/tournamentNotifications";
 
 type ReportParams = {
   matchId: string;
@@ -8,30 +9,41 @@ type ReportParams = {
   player2Score?: number | null;
 };
 
-async function placeIntoMatch(matchId: string, playerId: number, tx: Prisma.TransactionClient) {
+async function placeIntoMatch(
+  matchId: string,
+  playerId: number,
+  tx: Prisma.TransactionClient
+): Promise<{ matchReady: boolean; matchId: string }> {
   const match = await tx.match.findUnique({ where: { id: matchId } });
-  if (!match) return;
+  if (!match) return { matchReady: false, matchId };
 
   if (match.player1Id && match.player2Id) {
-    return;
+    return { matchReady: false, matchId };
   }
 
   const targetField = match.player1Id ? "player2Id" : "player1Id";
+  const willBeReady = match.player1Id !== null || match.player2Id !== null;
+
   await tx.match.update({
     where: { id: matchId },
     data: { [targetField]: playerId },
   });
+
+  return { matchReady: willBeReady, matchId };
 }
 
-async function maybeFinalizeTournament(tournamentId: number, tx: Prisma.TransactionClient) {
+async function maybeFinalizeTournament(
+  tournamentId: number,
+  tx: Prisma.TransactionClient
+): Promise<boolean> {
   const tournament = await tx.tournament.findUnique({
     where: { id: tournamentId },
     include: { players: true, matches: true },
   });
-  if (!tournament) return;
+  if (!tournament) return false;
 
   const allCompleted = tournament.matches.every((m) => m.status === MatchStatus.completed);
-  if (!allCompleted) return;
+  if (!allCompleted) return false;
 
   // Calculate rankings: winner = 1, runner-up = 2, others by elimination order (later elimination = better rank)
   const winnerId = tournament.winnerPlayerId;
@@ -57,10 +69,12 @@ async function maybeFinalizeTournament(tournamentId: number, tx: Prisma.Transact
     where: { id: tournamentId },
     data: { status: TournamentStatus.completed },
   });
+
+  return true;
 }
 
 export async function reportMatch(params: ReportParams) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUnique({
       where: { id: params.matchId },
       include: {
@@ -109,6 +123,9 @@ export async function reportMatch(params: ReportParams) {
       data: { lossCount: { increment: 1 } },
     });
 
+    // Track matches that become ready for notifications
+    const matchesToNotify: string[] = [];
+
     if (loser.lossCount >= 2 || !match.nextLoserMatchId) {
       const maxElimination =
         (await tx.tournamentPlayer.aggregate({
@@ -120,11 +137,17 @@ export async function reportMatch(params: ReportParams) {
         data: { eliminationOrder: maxElimination + 1 },
       });
     } else {
-      await placeIntoMatch(match.nextLoserMatchId, loserId, tx);
+      const loserResult = await placeIntoMatch(match.nextLoserMatchId, loserId, tx);
+      if (loserResult.matchReady) {
+        matchesToNotify.push(loserResult.matchId);
+      }
     }
 
     if (match.nextWinnerMatchId) {
-      await placeIntoMatch(match.nextWinnerMatchId, winnerId, tx);
+      const winnerResult = await placeIntoMatch(match.nextWinnerMatchId, winnerId, tx);
+      if (winnerResult.matchReady) {
+        matchesToNotify.push(winnerResult.matchId);
+      }
     }
 
     if (match.bracket === "final" || !match.nextWinnerMatchId) {
@@ -134,8 +157,23 @@ export async function reportMatch(params: ReportParams) {
       });
     }
 
-    await maybeFinalizeTournament(match.tournamentId, tx);
+    const tournamentFinalized = await maybeFinalizeTournament(match.tournamentId, tx);
+
+    return {
+      tournamentId: match.tournamentId,
+      matchesToNotify,
+      tournamentFinalized,
+    };
   });
+
+  // Send notifications after transaction commits (fire and forget)
+  if (result.tournamentFinalized) {
+    notifyTournamentComplete(result.tournamentId).catch(console.error);
+  } else {
+    for (const matchId of result.matchesToNotify) {
+      notifyNewMatch(matchId).catch(console.error);
+    }
+  }
 }
 
 export async function autoAdvanceIfBye(matchId: string) {
